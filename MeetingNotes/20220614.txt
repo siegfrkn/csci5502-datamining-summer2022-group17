@@ -1,0 +1,10 @@
+TODO (future):
+- decide which attributes are important
+- minor vs. major or "domain expert" exclusions
+- what interesting questions we want to ask
+
+Dictionary Link:
+https://safetydata.fra.dot.gov/gcis/Help/ReferenceDocuments/GCIS_Data_Dictionary_External_Use_v3.0.0_Rel_01-27-2021.pdf
+
+"Homework" for Next Meeting 6/22:
+Each person come up with ~2 interesting questions and a broad plan how to approach them
