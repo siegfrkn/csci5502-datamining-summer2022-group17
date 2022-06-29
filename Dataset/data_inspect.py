@@ -5,9 +5,15 @@ df = pd.read_csv("./GCIS_Published_Crossing_Data/PublishedCrossingData-05-31-202
 
 print(df.describe())
 
-print("Number of attributes: " + repr(len(df.columns)) + "\n")
-print("Number of records: " + repr(len(df)) + "\n")
-print("Attributes: " + repr(df.info()) + "\n")
+num_attributes = len(df.columns)
+num_records = len(df)
+num_nans = df.isnull().sum().sum()
+num_total_entries = num_attributes * num_records - num_nans
+
+print("Number of attributes: " + repr(num_attributes) + "\n")
+print("Number of records: " + repr(num_records) + "\n")
+print("Number of NaN's: " + repr(num_nans) + "\n")
+print("Total Number of Records: " + repr(num_total_entries) + "\n")
 
 print("Year Min: " + str( min(df.ReportYear)))
 print("Year Max: " + str(max(df.ReportYear)) + "\n")
@@ -15,7 +21,7 @@ print("Year Max: " + str(max(df.ReportYear)) + "\n")
 print("Number of Minor Incidents: " + str(len(df[df.ReportType == "Minor"])) + "\n")
 print("Number of Major Incidents: " + str(len(df[df.ReportType == "Major"])) + "\n")
 
-print(df.EmrgncySrvc.unique())
+print(df.SpselIDs.unique())
 
 # create subset of the data using simple random sample without replacement
 df_sample = df.sample(frac = 0.10, replace = False)
