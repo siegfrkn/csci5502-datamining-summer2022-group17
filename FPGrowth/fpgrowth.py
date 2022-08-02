@@ -6,7 +6,9 @@ from mlxtend.frequent_patterns import fpgrowth
 
 def csvLoad(csv_name):
 	print("Loading in file \"" + str(csv_name) + "\"...")
-	df = pd.read_csv(csv_name, low_memory=False, nrows=100)
+	df = pd.read_csv(csv_name, low_memory=False)
+	# df = pd.read_csv(csv_name, low_memory=False, nrows=100)
+	df = df.sample(frac = 0.001, replace = False)
 	df = df.astype(str)
 	df = df.applymap(lambda s: s.lower() if type(s) == str else s)
 	return df
@@ -79,11 +81,12 @@ def calcFPGrowth(df_pd, supp):
 
 ### USE ORIGINAL DATA
 df = csvLoad("../Dataset/Highway-Rail_Grade_Crossing_Accident_Data.csv")
+# printSize(df)
 df_cleaned = removePreCodedCols(df)
 saveDataFrame(df_cleaned, "cleaned.csv")
 df_transcoded = transcodeData(df_cleaned)
 saveDataFrame(df_transcoded, "transcoded.csv")
-calcFPGrowth(df_transcoded, 0.01)
+calcFPGrowth(df_transcoded, 0.6)
 
 ### USE CLEANED DATA
 # df_cleaned = csvLoad("./cleaned.csv")
