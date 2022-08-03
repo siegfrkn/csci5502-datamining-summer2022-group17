@@ -3,14 +3,27 @@ import numpy as np
 from mlxtend.preprocessing import TransactionEncoder
 from pathlib import Path 
 from mlxtend.frequent_patterns import fpgrowth
+from pyspark.sql.functions import split
+from pyspark.sql import SparkSession
+import pyspark.sql.functions as f
+from pyspark.ml.linalg import Vectors
+from pyspark.ml.feature import StringIndexer
+from pyspark.ml import Pipeline
+from pyspark.ml.feature import OneHotEncoder
+
+spark = SparkSession.builder.master("local[1]").appName("fpgrowth").getOrCreate()
 
 def csvLoad(csv_name):
 	print("Loading in file \"" + str(csv_name) + "\"...")
-	df = pd.read_csv(csv_name, low_memory=False)
+	# df = pd.read_csv(csv_name, low_memory=False)
 	# df = pd.read_csv(csv_name, low_memory=False, nrows=100)
-	df = df.sample(frac = 0.001, replace = False)
-	df = df.astype(str)
-	df = df.applymap(lambda s: s.lower() if type(s) == str else s)
+	df = spark.read.load(csv_name, format="csv", sep=";", inferSchema="true", header="true")
+	# df = df.sample(frac = 0.001, replace = False)
+	df = df.sample(False, fraction=0.001, seed=3)
+	# df = df.astype(str)
+	for col in df.columns:
+		df = df.withColumn(col,f.lower(f.col(col)))
+	# df = df.applymap(lambda s: s.lower() if type(s) == str else s)
 	return df
 
 def printSummary(df_pd):
@@ -18,9 +31,9 @@ def printSummary(df_pd):
 
 def removePreCodedCols(df_pd):
 	print("Removing pre-coded columns...")
-	for (columnName, columnData) in df_pd.iteritems():
+	for (columnName, columnData) in df_pd.toPandas().iteritems():
 		if 'Code' in columnName:
-			df_pd.drop([columnName], axis=1, inplace=True)
+			df_pd.toPandas().drop([columnName], axis=1, inplace=True)
 			# print("DROP COLUMN")
 		# else:
 			# print("\nColumnName: " + str(columnName))
@@ -54,18 +67,39 @@ def printSize(df_pd):
 
 
 def transcodeData(df_pd):
-	print("Transcoding data into sparse matrix...")
-	df_out = df_pd.apply(lambda x: list(x.dropna().values), axis=1).tolist()
-	df_pd = df_pd.astype(str)
-	te = TransactionEncoder()
-	fitted = te.fit(df_out)
-	te_ary = fitted.transform(df_out, sparse=True)
-	df_transcoded = pd.DataFrame.sparse.from_spmatrix(te_ary, columns=te.columns_)
+	print("Transcoding data...")
+	# df_out = df_pd.apply(lambda x: list(x.dropna().values), axis=1).tolist()
+	# df_pd = df_pd.astype(str)
+	# te = TransactionEncoder()
+	# fitted = te.fit(df_out)
+	# te_ary = fitted.transform(df_out, sparse=True)
+	# df_transcoded = pd.DataFrame.sparse.from_spmatrix(te_ary, columns=te.columns_)
+
+	#create a list of the columns that are string typed
+	categoricalColumns = [item[0] for item in df_pd.dtypes if item[1].startswith('string') ]
+
+	#define a list of stages in your pipeline. The string indexer will be one stage
+	stages = []
+
+	for categoricalCol in categoricalColumns:
+		#create a string indexer for those categorical values and assign a new name including the word 'Index'
+		stringIndexer = StringIndexer(inputCol = categoricalCol, outputCol = categoricalCol + 'Index')
+		encoder = OneHotEncoder(dropLast=False, inputCol=categoricalCol + 'Index', outputCol=categoricalCol + 'Encoded')
+		#append the string Indexer to our list of stages
+		stages += [stringIndexer]
+		stages += [encoder]
+
+	#Create the pipeline. Assign the satges list to the pipeline key word stages
+	pipeline = Pipeline(stages = stages)
+	#fit the pipeline to our dataframe
+	pipelineModel = pipeline.fit(df_pd)
+	#transform the dataframe
+	df_pd = pipelineModel.transform(df_pd)
 	return df_pd
 
 def saveDataFrame(df_pd, filename):
 	print("Saving dataframe to file \"" + filename + "\"...")
-	df_pd.to_csv(filename)
+	df_pd.toPandas().to_csv(filename)
 
 
 def calcFPGrowth(df_pd, supp):
