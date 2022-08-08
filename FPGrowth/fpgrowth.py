@@ -8,15 +8,11 @@ from pyspark.sql.functions import split, col, lower, element_at, isnan
 from pyspark.sql import SparkSession
 # import pyspark.sql.functions as f
 from pyspark.ml.linalg import Vectors
-from pyspark.ml.feature import StringIndexer, Imputer, QuantileDiscretizer
+from pyspark.ml.feature import StringIndexer, Imputer, QuantileDiscretizer, OneHotEncoder
 from pyspark.ml import Pipeline
-from pyspark.ml.feature import OneHotEncoder
 from pyspark.ml.fpm import FPGrowth
-
 from pyspark.sql.types import IntegerType
 from pyspark import SparkFiles
-from pyspark.ml import Pipeline
-from pyspark.ml.fpm import FPGrowth
 
 from pyspark.sql.functions import row_number, array, col, explode, lit, concat, \
   collect_list, struct, array_contains, create_map, size, regexp_replace
@@ -27,21 +23,15 @@ import pandas as pd
 import json
 from itertools import chain
 
-# with option_context('display.max_colwidth', 100):
-# 	display(display_pandas(itemset_df))
-
-
 spark = SparkSession.builder.master("local[1]").appName("fpgrowth").getOrCreate()
 
-# general purpose function for obtain a list of column names
-# from a dataframe that begin with `pattern`
+# general purpose function for obtain a list of column names from a dataframe that begin with `pattern`
 def list_cols_starting_with(df, pattern):
 	print(pattern)
 	out = list(filter(lambda x: x.startswith(pattern), df.columns))
 	return out
 
-# general purpose function to display Spark DF as a pandas DF
-# for improved printing
+# general purpose function to display Spark DF as a pandas DF for improved printing
 def display_pandas(df, limit=5):
 	return df.limit(limit).toPandas()
 
@@ -108,13 +98,12 @@ def castCols(self):
 	.withColumn("Total Injured Form 55A",col("Total Injured Form 55A").cast(IntegerType()))
 	return newSelf
 
+# TODO: keep this or lose this?
 def cleanStrings(self):
 	print("\nCleaning strings...")
 	# cast all strings to lower and remove whitespace
 	newSelf = self
 	newColumns=(column.replace(' ', '') for column in newSelf.columns) # this works but taking out for the time being
-	print(newColumns)
-	# NewColumns=(lower(column) for column in df_pd.columns)
 	newSelf = newSelf.toDF(*newColumns)
 	return newSelf
 
@@ -179,49 +168,21 @@ def handleNullValues(self):
 		# print(str(col_) + " : "  + str(df.select(col_).distinct().count()))
 	return newSelf
 
-# def binValues(self):
-
 def printSize(df_pd):
 	num_attributes = len(df_pd.columns)
 	print("\nNumber of attributes: " + repr(num_attributes))
 	num_records = df_pd.count()
 	print("Number of records: " + repr(num_records))
 
-
-def transcodeData(df_pd):
-	print("\nTranscoding data...")
-	newdf=df_pd
-	# create a list of the columns that are string typed
-	categoricalColumns = selectColumns(newdf, True)
-	# create a list of the columns that are numerically typed
-	numericalColumns = selectColumns(newdf, False)
-	#define a list of stages in your pipeline to string indexing and encoding
-	stages = []
-	for categoricalCol in categoricalColumns:
-		#create a string indexer for those categorical values and assign a new name including the word 'Index'
-		stringIndexer = StringIndexer(inputCol = categoricalCol, outputCol = categoricalCol + 'Index')
-		encoder = OneHotEncoder(dropLast=False, inputCol=categoricalCol + 'Index', outputCol=categoricalCol + 'Encoded')
-		#append the string Indexer to our list of stages
-		stages += [stringIndexer]
-		stages += [encoder]
-
-	# create the pipeline. Assign the satges list to the pipeline key word stages
-	pipeline = Pipeline(stages = stages)
-	# fit the pipeline to our dataframe
-	pipelineModel = pipeline.fit(newdf)
-	# transform the dataframe
-	newdf = pipelineModel.transform(newdf)
-	return newdf
-
 def saveDataFrame(df_pd, filename):
 	print("\nSaving dataframe to file \"" + filename + "\"...")
 	df_pd.toPandas().to_csv(filename)
 
-def discretizeCol(df):
+def discretizeCol(df_pd):
 	# get features list
-	feature_list = selectColumns(df, 'False')
+	feature_list = selectColumns(df_pd, 'False')
 	# select features
-	features_df = df.select(feature_list)
+	features_df = df_pd.select(feature_list)
 	# fit QuantileDiscretizer to all and transform
 	discretizer = [QuantileDiscretizer(inputCol=x, outputCol="Quantile_"+x, numBuckets=10) for x in feature_list]
 	discretizer_results = Pipeline(stages=discretizer).fit(features_df).transform(features_df)
@@ -229,14 +190,11 @@ def discretizeCol(df):
 	# select transformed columns
 	discrete_cols = list_cols_starting_with(discretizer_results, "Quantile_")
 	discrete_df = discretizer_results.select(discrete_cols)
-	# display_pandas(discrete_df)
 	return discrete_df
 
 def to_explode(df, by):
 	cols, dtypes = zip(*((c, t) for (c, t) in df.dtypes if c not in by))
-	kvs = explode(array([
-	  struct(lit(c).alias("feature"), col(c).alias("value")) for c in cols
-	])).alias("kvs")
+	kvs = explode(array([struct(lit(c).alias("feature"), col(c).alias("value")) for c in cols])).alias("kvs")
 	return df.select(by + [kvs]).select(by + ["kvs.feature", "kvs.value"])
 
 def append_row_number(df):
@@ -268,23 +226,8 @@ def int_to_labels(column, mapping):
 	labels = mapping_expr.getItem(col(column))
 	return(labels)
 
-
-
 def calcFPGrowth(newdf, supp, conf):
 	print("\nCalculating frequent patterns...")
-	# df_pd = df_pd.astype(bool)''
-	# freq_patterns = fpgrowth(df_pd, min_support=supp, use_colnames=True,verbose=1)
-	# df_pd.DataFrame(df_pd.take(5), columns=df.columns).transpose()
-	# later
-	# train, test = df.randomSplit([0.8, 0.2], seed = 1)
-	# print("Training Dataset Count: " + str(train.count()))
-	# print("Test Dataset Count: " + str(test.count()))
-
-	# freq_patterns = FPGrowth(minSupport=supp, minConfidence=conf)
-	# fpm = freq_patterns.fit(df_pd)
-	# fpm.setPredictionCol("newPrediction")
-	# fpm.freqItemsets.sort("items").show(5)
-
 	print("\nITEMSETS")
 	with pd.option_context('display.max_colwidth', 100):
 		print(display_pandas(newdf))
@@ -292,33 +235,56 @@ def calcFPGrowth(newdf, supp, conf):
 	fpGrowth = FPGrowth(itemsCol="items", minSupport=supp, minConfidence=conf)
 	model = fpGrowth.fit(newdf)
 	model.freqItemsets.sort('freq', ascending=False).show(10, truncate=False)
+	model.freqItemsets.show()
 	return model.freqItemsets
 
-	# basketdata = df_pd.sort(['Grade Crossing ID'])
-	
-
-	# print(freq_patterns)
-	# return freq_patterns
 def itemsets_to_json(df):
 	itemsets_dict = df.toPandas().to_dict(orient='records')
 	return(itemsets_dict)
 
+# Retrieve itemsets
+# -- parameters for the maximum number of items and the desired consequent
+# -- results are ordered (descending) by lift score
+def get_itemsets(max_items, consequent):
+  out = model.associationRules \
+    .orderBy('lift', ascending=False) \
+    .where(col('lift') > 1) \
+    .where(size(col('antecedent')) == max_items-1) \
+    .where(array_contains(col("consequent"), consequent))
+  return(out)
 
 
 ### INSTRUCTIONS
 
 
 ### USE ORIGINAL DATA
+
+# Load the csv
 df = csvLoad("../Dataset/Highway-Rail_Grade_Crossing_Accident_Data.csv")
+
+# cleaning and preprocessing
 df = dropCols(df)
 df = removePreCodedCols(df)
 df = castCols(df)
-# df = cleanStrings(df)
-# print(df.select([count(when(isnan(c) | col(c).isNull(), c)).alias(c) for c in df.columns]).show())
 df = handleNullValues(df)
-# print(df.select([count(when(isnan(c) | col(c).isNull(), c)).alias(c) for c in df.columns]).show())
 saveDataFrame(df, "cleaned.csv")
+
+# discretize the numerical columns
+# discrete_numerical_df = discretizeCol(df)
 discrete_df = discretizeCol(df)
+# print("\ndiscrete_numerical_df shape: " + str(discrete_numerical_df.count()) + "," + str(len(discrete_numerical_df.columns)))
+# # recombine categorical columns to make a full dataset
+# print("TEST:")
+# print(df)
+# categorical_df = df.select(selectColumns(df, 'True'))
+# saveDataFrame(categorical_df, "categorical.csv")
+# print("\ncategorical_df shape: " + str(categorical_df.count()) + "," + str(len(categorical_df.columns)))
+# # discrete_df = discrete_numerical_df.union(categorical_df)
+# discrete_df = discrete_numerical_df.select(concat(categorical_df))
+# print("\discrete_df shape: " + str(discrete_df.count()) + "," + str(len(discrete_df.columns)))
+# saveDataFrame(discrete_df, "discretized.csv")
+
+# transform to vertical format to increase processing speed
 long_df = wide_to_long(df = discrete_df)
 long_df_labeled = long_df.withColumn("label", int_to_labels("value", mapping)).drop("value")
 
@@ -328,32 +294,19 @@ itemset_df = long_df_labeled.withColumn('feature', regexp_replace('feature', 'Qu
 	.groupBy("row_number") \
 	.agg(collect_list("item").alias("items"))
 
-# with pd.option_context('display.max_colwidth', 100):
-# 	print(display_pandas(itemset_df))
-
-# totalNull = 0
-# totalNull += [countNull(col_) for col_ in df]
-# df = transcodeData(df)
 saveDataFrame(itemset_df, "transcoded.csv")
 frequentItemsets = calcFPGrowth(itemset_df, 0.6, 0.6)
-# itemsets_json = [itemsets_to_json(i) for i in frequentItemsets]
 file_path = 'frequentItemsets.txt'
-sys.stdout = open(file_path, "a")
-print(frequentItemsets.show())
-# print(frequentItemsets)
-
-# df = csvLoad("transcoded.csv")
+sys.stdout = open(file_path, "w")
+# print(frequentItemsets.show())
 
 
 #TODO
 # General cleanup
 # README
-# fpgrowth
 # combine categorical back into discrete bucketed items before itemset creation
-# binning certain numerical values
-# cast all strings to lower?
-# remove white space?
-# null value casting based on type of incident
+# null value casting based on type of incident?
 # feature scalaing?
 # outliers?
 # user defined consequents
+# change to jupyter notebook?
