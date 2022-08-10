@@ -25,3 +25,6 @@ The amount of data being processes is very large, and so the amount of memory an
 
 ### Calculate Frequent Itemsets
 Now that the data has been cleaned, preprocessed, and tranformed into a more efficient format, the frequent patterns can be generated. The function to generate the FPGrowth model takes values for minimum support and confidence. The complete set of frequent patterns is returned. In addition, the user can specify an attribute of interest, referred to as a consequent, and a maximum number of items in the final pattern, such that patterns that are deemed of interest to the user are identified.
+
+### Show Association Rules
+The FPGrowth model developed is then used to show the association rules for the given consequents, and the association rules are reported with metrics lift, confidence, and support.
