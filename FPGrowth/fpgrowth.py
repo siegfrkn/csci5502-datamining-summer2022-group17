@@ -76,7 +76,8 @@ Output: pyspark dataframe from file contents
 def csvLoad(csv_name):
 	print("\nLoading in file \"" + str(csv_name) + "\"...")
 	df = spark.read.options(header='True', inferSchema='False', delimiter=',').csv(csv_name)
-	df = df.sample(False, fraction=0.001, seed=3)
+	# uncomment the line below to only run on a sample of the data
+	# df = df.sample(False, fraction=0.001, seed=3)
 	return df
 
 
@@ -264,6 +265,7 @@ def discretizeCol(df_pd):
 	print("\nDISCRETIZER RESULTS")
 	# select transformed columns
 	discrete_cols = listColsStartingWith(discretizer_results, "Quantile_")
+	print("Total Injured Form 55A: " + str(discretizer_results.select("Total Injured Form 55A")))
 	# recombine discrete columns with categorical columns
 	categorical_cols = selectColumns(df_pd, True)
 	total_cols = discrete_cols + categorical_cols
@@ -404,7 +406,7 @@ fpGrowthModel = calcFPGrowth(itemset_df, 0.1, 0.1)
 frequentItemsets = fpGrowthModel.freqItemsets
 
 # retrieve frequent itemsets related to specific attributes of interest i.e. consequents
-consequents = ["Employees Killed For Reporting Railroad_Very_Low"]
+consequents = ["Total Injured Form 55A_Moderate"]
 itemsets = [getItemsets(2, i, fpGrowthModel ) for i in consequents]
 itemsetsJson = [itemsetsToJson(i) for i in itemsets]
 
