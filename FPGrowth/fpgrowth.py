@@ -410,12 +410,3 @@ itemsetsJson = [itemsetsToJson(i) for i in itemsets]
 
 # show association rules
 fpGrowthModel.associationRules.sort("antecedent", "consequent").show(100, truncate=False)
-
-"""
-TODO
-README
-null value casting based on type of incident?
-feature scalaing?
-outliers?
-calculate lift support confidence
-"""
