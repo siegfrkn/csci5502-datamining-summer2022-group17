@@ -30,6 +30,6 @@ Decision tree and k-means analysis indicated that speed and wet inclement weathe
 Frequent pattern and k-means analysis indicated that signaling reduced crash risk and that low-visibility weather correlated to more crashes, indicating that clearer signals could reduce risk.
 Decision tree and frequent pattern analysis indicated that overall better design of highway-rail intersections could reduce crash risk, as speed limits and signaling implementations were not consistent across incidents.
 
-Final Presentation:
+Final Presentation (Zipped): https://github.com/siegfrkn/csci5502-datamining-summer2022-group17/blob/c6a497657011c1d232c4dfd583c49e73971b240f/17_AnalysisOfTheEffectsOfRegulationOnRailroadSafety_Part6_Video.zip
 
 Final Paper: https://github.com/siegfrkn/csci5502-datamining-summer2022-group17/blob/ed8bc627321cce0e79a2ff08f66537c64c208c46/17_AnalysisOfTheEffectsOfRegulationOnRailroadSafety_Part4.pdf
