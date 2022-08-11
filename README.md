@@ -32,4 +32,4 @@ Decision tree and frequent pattern analysis indicated that overall better design
 
 Final Presentation:
 
-Final Paper:
+Final Paper: https://github.com/siegfrkn/csci5502-datamining-summer2022-group17/blob/ed8bc627321cce0e79a2ff08f66537c64c208c46/17_AnalysisOfTheEffectsOfRegulationOnRailroadSafety_Part4.pdf
